@@ -1,0 +1,66 @@
+* Readme for go510 Daemon *
+
+** Purpose **
+The go510 Daemon is intended to work as a complete driver for certain parts of the Logitech G510 
+keyboard. Parts that will be accessible @ 1.0 are: keyboard functions, backlight color set, lcd 
+screen setting, lcd setting, macro keys and a way to program new macro keys, and a system to 
+imitate apps on the lcd screen.
+
+** Currently working ** 
+ - Finding a g510 keyboard device.
+ - Taking control of the g510 keyboard
+ - Reading the keyboard device, both normal and special keys
+ - Setting the color
+
+** Currently not working/implemented **
+ - Macro engine
+ - Sending key events to the kernel
+ - Knowing what key is being hit (LOL)
+ - Setting the color externally
+ - Setting the lcd screen anyway (disabled in code)
+ - External interfaces
+ - Configuration application
+
+** I'm not worrying about (might work)**
+Audio chip(sort of might work, but not through this)
+wine simulation for lcd screen for Windows apps
+Windows/Mac support
+Python/Ruby/C++/BRAINF*CK bindings
+
+** Things I'm thinking about **
+I'm planning on using unix sockets + protobufs to transfer commands to set the lcd screen
+and input macro settings. An app would have a bi-directional socket it listens on and 
+puts images for the lcd screen on. I will put out the .proto's for such communications and
+an example python app or two.
+
+** Questions Answered **
+Q: I have a G15/G19/G110/G3.14 and this doesn't support it. Support it immediately!!!212!@!!!!
+A: In order for me to support it, I'll need an example of the keyboard or a knowledgable person 
+to work with me to get it supported. Since these keyboard are like $60+ each, I'm not about to 
+buy a while bunch just for fun. I'll look to setup some sort of donate system to pay for keyboard 
+and time to implement. 
+
+Q: I have a non-Logitech keyboard, is it possible for this to work with the macro keys/lcd 
+screen on it?
+A: Again I'll need the keyboard, or a knowledgable person.
+
+Q: When will an app with X feature be coming out?
+A: I haven't even written an API yet, but when I do it will be out then it is out.
+
+Q: Why no Windows/Mac thinking?
+A: Currently I'm passing keystrokes using uinput, which is a Linux specific thing. In order for
+me to port to Mac/Windows I'll need to know what the equivalent would be for Mac/Windows. Then 
+I would have to get the correct libusb working. And since this is all written in Go, obviously 
+I'll need a compiler to be working.
+
+Q: Go, that Google language?
+A: Yes, I liked the language, but hadn't found anything I needed to make in it. I decided it would 
+be fun to write this in it. I learned about wrapping C API's all sorts of Go things and awesomeness.
+I should totally write up a lightning talk length thing about the problems I went through with this.
+
+** Thanks and such **
+Thanks to the libg15 for some hints when I was stuck. However I'm not about to start writing serious 
+sized apps in C for the heck of it when I have the Go.
+Thanks to the authors of Go for a powerful and fast language without losing so much power from new 
+awesome languages like Python. 
+Thanks to Logitech for a good keyboard that made me really start learning this awesome language.
