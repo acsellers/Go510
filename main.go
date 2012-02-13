@@ -16,6 +16,7 @@ func main() {
   //lcd_control := make(chan golibusb.LCDFrame)
 
   handle := golibusb.Start(color_control, uinput_control)
+  //guinput.FakeStart(uinput_control)
   guinput.Start(uinput_control)
 
 

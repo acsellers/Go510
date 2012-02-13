@@ -16,7 +16,11 @@ const (
   KEY_MULTI_DOWN
   KEY_MULTI_UP
 )
-
+func FakeStart(input chan KeyEvent){
+  for {
+    <-input
+  }
+}
 func Scan(device C.int, input chan KeyEvent){
 
   event := new(KeyEvent)
