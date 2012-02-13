@@ -1,6 +1,8 @@
 package guinput
 
-// #include "guinput.h"
+/*
+#include "guinput.h"
+*/
 import "C"
 
 import (
@@ -24,6 +26,7 @@ func FakeStart(input chan KeyEvent){
 func Scan(device C.int, input chan KeyEvent){
 
   event := new(KeyEvent)
+  log.Print("Starting to scan for uinput events")
 
   for event.Kind != KEY_DETACH {
 
@@ -39,6 +42,7 @@ func Scan(device C.int, input chan KeyEvent){
     case event.Kind == KEY_DETACH:
       C.UkeyDeviceDestroy(device)
     }
+    log.Print("Resuming scan")
   }
 
   log.Print("Detaching uinput system\n")

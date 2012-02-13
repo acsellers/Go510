@@ -1,7 +1,8 @@
 package golibusb
-
-// #cgo LDFLAGS: -lusb-1.0
-// #include <libusb-1.0/libusb.h>
+/*
+ #cgo LDFLAGS: -lusb-1.0
+ #include <libusb-1.0/libusb.h>
+ */
 import "C"
 
 import (
@@ -36,15 +37,16 @@ func NormalKeyMonitor(handle *C.struct_libusb_device_handle, output chan guinput
   transferred_bytes := C.int(0)
 
   for {
-    e := C.libusb_interrupt_transfer(handle, key_endpoint, &data_buffer[0], 8, &transferred_bytes, 10)
+    e := C.libusb_interrupt_transfer(handle, key_endpoint, &data_buffer[0], 8, &transferred_bytes,100)
     switch e {
     case 0:
       //you got the dataz!!
       //TODO: use a slice instead of starting at 2
-      fmt.Printf("Received usb packet: %02x|%02x%02x%02x%02x%02x%02x\n",data_buffer[0],data_buffer[2],data_buffer[3],data_buffer[4],data_buffer[5],data_buffer[6],data_buffer[7])
+      fmt.Printf("Received usb packet: %02x|%02x.%02x.%02x.%02x.%02x.%02x\n",data_buffer[0],data_buffer[2],data_buffer[3],data_buffer[4],data_buffer[5],data_buffer[6],data_buffer[7])
       for i := 2; i < 8; i++ {
         if data_buffer[i] == 0x00 && current_keys[i] != 0 {
           output <-guinput.KeyEvent{guinput.KEY_UP_CODE, current_keys[i]}
+          current_keys[i] = 0x00
         }
         if data_buffer[i] != 0x00 {
           ucode := KEYMAP[uint8(data_buffer[i])]
@@ -56,7 +58,7 @@ func NormalKeyMonitor(handle *C.struct_libusb_device_handle, output chan guinput
         }
       }
       if uint8(data_buffer[0]) != current_keys[0] {
-        //ParseModifiers(uint8(data_buffer[0]),current_keys[0],output)
+        ParseModifiers(uint8(data_buffer[0]),current_keys[0],output)
         current_keys[0]=uint8(data_buffer[0])
       }
     case -7:
@@ -68,7 +70,6 @@ func NormalKeyMonitor(handle *C.struct_libusb_device_handle, output chan guinput
   }
 }
 
-//This next function uses a lot of bit-twiddling. Live wit it
 func ParseModifiers(pressed_keys uint8, previous_keys uint8, output chan guinput.KeyEvent) {
   if pressed_keys | previous_keys > previous_keys { //additional keys were pressed
 
@@ -203,7 +204,7 @@ func Start(color chan byte, output chan guinput.KeyEvent)(*C.struct_libusb_devic
   go ColorChange(key_device_handle, color)
   //go LCDChange(key_device_handle, lcd)
   go NormalKeyMonitor(key_device_handle, output)
-  //go SpecialKeyMonitor(key_device_handle, output)
+  go SpecialKeyMonitor(key_device_handle, output)
 
   log.Print("Libusb Goroutines started\n")
   return key_device_handle
