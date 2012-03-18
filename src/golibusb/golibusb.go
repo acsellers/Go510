@@ -220,7 +220,7 @@ func ParseDuos(pressed_keys uint8, previous_keys uint8, output chan guinput.KeyE
     }
   }
 }
-
+/*
 func FilterMacroKeys(normal_stream chan uint8, special_stream chan uint8, output chan guinput.KeyEvent) {
   norm1,norm2,spec1,spec2 := uint8(0),uint8(0),uint8(0),uint8(0)
 
@@ -233,7 +233,7 @@ func FilterMacroKeys(normal_stream chan uint8, special_stream chan uint8, output
   spec2 <- special_stream
 
 }
-
+*/
 func Start(color chan byte, output chan guinput.KeyEvent)(*C.struct_libusb_device_handle){
 
 	C.libusb_init(nil)

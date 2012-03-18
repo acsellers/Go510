@@ -5,6 +5,7 @@ import (
 	"golibusb"
   "os/signal"
   "log"
+  "os"
 )
 
 func main() {
@@ -21,7 +22,9 @@ func main() {
 
 
   //wait for it... (it being Ctrl-C)
-  <-signal.Incoming
+  signal_channel := make(chan os.Signal)
+  signal.Notify(signal_channel)
+  <-signal_channel
   golibusb.End(handle)
   kill_event :=  guinput.KeyEvent{guinput.KEY_DETACH, 0}
   uinput_control <- kill_event
