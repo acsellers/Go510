@@ -13,6 +13,8 @@ import (
 
 var (
   KEYMAP map[uint8] uint8
+  SPECDUO map[uint8] uint8
+  FAKEMACRO map[uint8] uint8
 )
 
 func ColorChange(handle *C.struct_libusb_device_handle, color chan byte) {
@@ -42,13 +44,14 @@ func NormalKeyMonitor(handle *C.struct_libusb_device_handle, output chan guinput
     case 0:
       //you got the dataz!!
       //TODO: use a slice instead of starting at 2
-      fmt.Printf("Received usb packet: %02x|%02x.%02x.%02x.%02x.%02x.%02x\n",data_buffer[0],data_buffer[2],data_buffer[3],data_buffer[4],data_buffer[5],data_buffer[6],data_buffer[7])
+      fmt.Printf("Received usb packet: %02x|%02x.%02x.%02x.%02x.%02x.%02x\n",data_buffer[1],data_buffer[2],data_buffer[3],data_buffer[4],data_buffer[5],data_buffer[6],data_buffer[7])
       for i := 2; i < 8; i++ {
         if data_buffer[i] == 0x00 && current_keys[i] != 0 {
           output <-guinput.KeyEvent{guinput.KEY_UP_CODE, current_keys[i]}
           current_keys[i] = 0x00
         }
         if data_buffer[i] != 0x00 {
+          log.Printf("Key pressed:%02x",data_buffer[i])
           ucode := KEYMAP[uint8(data_buffer[i])]
           if ucode != current_keys[i] && current_keys[i] != 0 {
             output <-guinput.KeyEvent{guinput.KEY_UP_CODE, current_keys[i]}
@@ -74,41 +77,34 @@ func ParseModifiers(pressed_keys uint8, previous_keys uint8, output chan guinput
   if pressed_keys | previous_keys > previous_keys { //additional keys were pressed
 
     if pressed_keys & 0x10 != 0{
-      log.Print("c")
       output <- guinput.KeyEvent{guinput.KEY_DOWN_CODE, guinput.KEY_RIGHTCTRL}
     }
     if pressed_keys & 0x20 != 0{
-      log.Print("s")
       output <- guinput.KeyEvent{guinput.KEY_DOWN_CODE, guinput.KEY_RIGHTSHIFT}
     }
     if pressed_keys & 0x40 != 0{
-      log.Print("a")
       output <- guinput.KeyEvent{guinput.KEY_DOWN_CODE, guinput.KEY_RIGHTALT}
     }
     if pressed_keys & 0x80 != 0{
-      log.Print("m")
       output <- guinput.KeyEvent{guinput.KEY_DOWN_CODE, guinput.KEY_RIGHTMETA}
     }
     if pressed_keys & 0x01 != 0{
-      log.Print("C")
       output <- guinput.KeyEvent{guinput.KEY_DOWN_CODE, guinput.KEY_LEFTCTRL}
     }
     if pressed_keys & 0x02 != 0{
-      log.Print("S")
       output <- guinput.KeyEvent{guinput.KEY_DOWN_CODE, guinput.KEY_LEFTSHIFT}
     }
     if pressed_keys & 0x04 != 0{
-      log.Print("A")
       output <- guinput.KeyEvent{guinput.KEY_DOWN_CODE, guinput.KEY_LEFTALT}
     }
     if pressed_keys & 0x08 != 0{
-      log.Print("M")
       output <- guinput.KeyEvent{guinput.KEY_DOWN_CODE, guinput.KEY_LEFTMETA}
     }
   }
 
-  if -pressed_keys & previous_keys > 0 { //keys were released
-    drop_keys := (previous_keys ^ pressed_keys) & pressed_keys
+
+  if ^pressed_keys & previous_keys != 0 { //keys were released
+    drop_keys := previous_keys^pressed_keys&pressed_keys
     log.Print("Lost a key")
 
     if drop_keys & 0x10 != 0{
@@ -135,9 +131,7 @@ func ParseModifiers(pressed_keys uint8, previous_keys uint8, output chan guinput
     if drop_keys & 0x08 != 0{
       output <- guinput.KeyEvent{guinput.KEY_UP_CODE, guinput.KEY_LEFTMETA}
     }
-
   }
-
 }
 
 func SpecialKeyMonitor(handle *C.struct_libusb_device_handle, output chan guinput.KeyEvent) {
@@ -145,6 +139,7 @@ func SpecialKeyMonitor(handle *C.struct_libusb_device_handle, output chan guinpu
   data_buffer := make([]C.uchar, 512)
   key_endpoint := C.uchar(0x82)
   transferred_bytes := C.int(0)
+  pressed_duos := uint8(0)
 
   for {
     e := C.libusb_interrupt_transfer(handle, key_endpoint, &data_buffer[0], 512, &transferred_bytes, 10)
@@ -152,6 +147,13 @@ func SpecialKeyMonitor(handle *C.struct_libusb_device_handle, output chan guinpu
     case 0:
       //we did it
       log.Print("Special Key data received")
+
+      //the media buttons and dials in the top uh right
+      //THey transfer 2 bytes and the first byte is 2, so duos
+      if transferred_bytes == 2 && data_buffer[0] == 0x02 {
+        ParseDuos(uint8(data_buffer[1]),pressed_duos,output)
+        pressed_duos = uint8(data_buffer[1])
+      }
       for i := 0; i < int(transferred_bytes); i++ {
         fmt.Printf("%02x\n",data_buffer[i])
       }
@@ -165,6 +167,72 @@ func SpecialKeyMonitor(handle *C.struct_libusb_device_handle, output chan guinpu
 
 }
 
+func ParseDuos(pressed_keys uint8, previous_keys uint8, output chan guinput.KeyEvent) {
+  if pressed_keys | previous_keys > previous_keys { //additional keys were pressed
+    if pressed_keys & 0x10 != 0{
+      output <- guinput.KeyEvent{guinput.KEY_DOWN_CODE, guinput.KEY_MUTE}
+    }
+    if pressed_keys & 0x20 != 0{
+      output <- guinput.KeyEvent{guinput.KEY_DOWN_CODE, guinput.KEY_VOLUMEUP}
+    }
+    if pressed_keys & 0x40 != 0{
+      output <- guinput.KeyEvent{guinput.KEY_DOWN_CODE, guinput.KEY_VOLUMEDOWN}
+    }
+    if pressed_keys & 0x01 != 0{
+      output <- guinput.KeyEvent{guinput.KEY_DOWN_CODE, guinput.KEY_NEXTSONG}
+    }
+    if pressed_keys & 0x02 != 0{
+      output <- guinput.KeyEvent{guinput.KEY_DOWN_CODE, guinput.KEY_PREVIOUSSONG}
+    }
+    if pressed_keys & 0x04 != 0{
+      output <- guinput.KeyEvent{guinput.KEY_DOWN_CODE, guinput.KEY_STOP}
+    }
+    if pressed_keys & 0x08 != 0{
+      output <- guinput.KeyEvent{guinput.KEY_DOWN_CODE, guinput.KEY_PLAYPAUSE}
+    }
+  }
+
+
+  if ^pressed_keys & previous_keys != 0 { //keys were released
+    drop_keys := previous_keys^pressed_keys&pressed_keys
+    log.Print("Lost a key")
+
+    if drop_keys & 0x10 != 0{
+      output <- guinput.KeyEvent{guinput.KEY_UP_CODE, guinput.KEY_MUTE}
+    }
+    if drop_keys & 0x20 != 0{
+      output <- guinput.KeyEvent{guinput.KEY_UP_CODE, guinput.KEY_VOLUMEUP}
+    }
+    if drop_keys & 0x40 != 0{
+      output <- guinput.KeyEvent{guinput.KEY_UP_CODE, guinput.KEY_VOLUMEDOWN}
+    }
+    if drop_keys & 0x01 != 0{
+      output <- guinput.KeyEvent{guinput.KEY_UP_CODE, guinput.KEY_NEXTSONG}
+    }
+    if drop_keys & 0x02 != 0{
+      output <- guinput.KeyEvent{guinput.KEY_UP_CODE, guinput.KEY_PREVIOUSSONG}
+    }
+    if drop_keys & 0x04 != 0{
+      output <- guinput.KeyEvent{guinput.KEY_UP_CODE, guinput.KEY_STOP}
+    }
+    if drop_keys & 0x08 != 0{
+      output <- guinput.KeyEvent{guinput.KEY_UP_CODE, guinput.KEY_PLAYPAUSE}
+    }
+  }
+}
+
+func FilterMacroKeys(normal_stream chan uint8, special_stream chan uint8, output chan guinput.KeyEvent) {
+  norm1,norm2,spec1,spec2 := uint8(0),uint8(0),uint8(0),uint8(0)
+
+  norm1 <- normal_stream
+
+  spec1 <- special_stream
+
+  norm2 <- normal_stream
+
+  spec2 <- special_stream
+
+}
 
 func Start(color chan byte, output chan guinput.KeyEvent)(*C.struct_libusb_device_handle){
 
@@ -308,5 +376,49 @@ func init(){
     0x5f : guinput.KEY_KP7,
     0x60 : guinput.KEY_KP8,
     0x61 : guinput.KEY_KP9,
+    0x3a : guinput.KEY_F1,
+    0x3b : guinput.KEY_F2,
+    0x3c : guinput.KEY_F3,
+    0x3d : guinput.KEY_F4,
+    0x3e : guinput.KEY_F5,
+    0x3f : guinput.KEY_F6,
+    0x40 : guinput.KEY_F7,
+    0x41 : guinput.KEY_F8,
+    0x42 : guinput.KEY_F9,
+    0x43 : guinput.KEY_F10,
+    0x44 : guinput.KEY_F11,
+    0x45 : guinput.KEY_F12,
+  }
+
+  SPECDUO = map[uint8] uint8  {
+    0x40 : guinput.KEY_VOLUMEDOWN,
+    0x20 : guinput.KEY_VOLUMEUP,
+    0x10 : guinput.KEY_MUTE,
+    0x08 : guinput.KEY_PLAYPAUSE,
+    0x04 : guinput.KEY_STOP,
+    0x02 : guinput.KEY_PREVIOUSSONG,
+    0x01 : guinput.KEY_NEXTSONG,
+  }
+
+  //These are the scan codes that the macro keys will imitate mapped back to macro num
+  FAKEMACRO= map[uint8] uint8 {
+    0x3a : 1,
+    0x3b : 2,
+    0x3c : 3,
+    0x3d : 4,
+    0x3e : 5,
+    0x3f : 6,
+    0x40 : 7,
+    0x41 : 8,
+    0x42 : 9,
+    0x43 : 10,
+    0x44 : 11,
+    0x45 : 12,
+    0x1e : 13,
+    0x1f : 14,
+    0x20 : 15,
+    0x21 : 16,
+    0x22 : 17,
+    0x23 : 18,
   }
 }
