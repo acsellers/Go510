@@ -25,3 +25,7 @@ Dependencies
 ### Final Goals
  * LCD protocol over socket (I can draw to it now just not in a easy way)
  * Multiple Apps that use the LCD
+
+
+Note: go1 branch has a version that build on recent weekly go versions
+that doesn't require go-gb.
