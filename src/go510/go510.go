@@ -1,4 +1,4 @@
-package main
+package go510
 
 import (
 	"guinput"

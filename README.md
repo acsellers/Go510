@@ -8,6 +8,13 @@ Dependencies
  * Linux (tested on Ubuntu
  * uinput kernel module loaded
 
+Compiling/Running
+-----------------
+
+Install go1
+Set up go1 correctly
+Run "go build go510"
+Your executable will be in \_bin/
 
 ### Finished
  * Turning usb packets into keystrokes 
