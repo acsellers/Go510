@@ -1,6 +1,9 @@
 Go510 Keyboard Driver
 =====================
 
+## OUTDATED: See a rebuilt version at github.com/acsellers/G510
+## Seriously this is 4 years old and pre-dates Go 1.0.
+
 Dependencies
 ------------
 
